@@ -1,11 +1,15 @@
 package com.example.kurs.project;
 
+import com.example.kurs.task.TaskDTO;
+import com.example.kurs.task.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectService {
@@ -14,71 +18,112 @@ public class ProjectService {
     private ProjectRepository projectRepository;
 
     @Autowired
-    private ProjectRepositoryJDBC projectRepositoryJDBC;
+    private TaskRepository taskRepository;
 
-    @Autowired
-    private ProjectRepositoryNPJDBC projectRepositoryNPJDBC;
-
-    public Optional<Project> createNewProject(ProjectDTO projectDTO) {
-        if (checkProjectDTO(projectDTO)) return Optional.empty();
-//        Project project = new Project(projectDTO.name, projectDTO.description, projectDTO.start_date, projectDTO.finish_date);
-//        projectRepository.save(project);
-//        return Optional.of(project);
-        return projectRepositoryNPJDBC.createProject(projectDTO);
+    public Optional<ProjectDTO> createNewProject(ProjectRequestDTO projectRequestDTO) {
+        Project project = new Project(
+                projectRequestDTO.name(),
+                projectRequestDTO.description(),
+                projectRequestDTO.start_date(),
+                projectRequestDTO.finish_date()
+        );
+        projectRepository.save(project);
+        ProjectDTO projectDTO = new ProjectDTO(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getStart_date(),
+                project.getFinish_date()
+        );
+        return Optional.of(projectDTO);
     }
 
-    public Optional<Project> updateProject(Long id, ProjectDTO projectDTO) {
-        if (checkProjectDTO(projectDTO)) return Optional.empty();
-//        Optional oldProject = projectRepository.findById(id);
-//        if (oldProject.isPresent()) {
-//            Project project = (Project) oldProject.get();
-//            project.setName(projectDTO.name);
-//            project.setDescription(projectDTO.description);
-//            project.setStart_date(projectDTO.start_date);
-//            project.setFinish_date(projectDTO.finish_date);
-//            projectRepository.save(project);
-//            return Optional.of(project);
-//        } else return Optional.empty();
-        return projectRepositoryNPJDBC.updateProject(id, projectDTO);
-    }
-
-    private boolean checkProjectDTO(ProjectDTO projectDTO) {
-        if (projectDTO.name == null ||
-                projectDTO.description == null ||
-                projectDTO.start_date == null ||
-                projectDTO.finish_date == null ||
-                projectDTO.finish_date.before(projectDTO.start_date)) return true;
-        return false;
+    public Optional<ProjectDTO> updateProject(Long id, ProjectRequestDTO projectRequestDTO) {
+        Optional<Project> oldProject = projectRepository.findById(id);//
+        if (oldProject.isPresent()) {
+            Project project = oldProject.get();
+            project.setName(projectRequestDTO.name());
+            project.setDescription(projectRequestDTO.description());
+            project.setStart_date(projectRequestDTO.start_date());
+            project.setFinish_date(projectRequestDTO.finish_date());
+            projectRepository.save(project);
+            ProjectDTO projectDTO = new ProjectDTO(
+                    project.getName(),
+                    project.getDescription(),
+                    project.getStart_date(),
+                    project.getFinish_date()
+            );
+            return Optional.of(projectDTO);
+        } else return Optional.empty();
     }
 
     public void deleteProject(Long id) {
-//        projectRepository.deleteById(id);
-        projectRepositoryNPJDBC.deleteProjectById(id);
+        projectRepository.deleteById(id);
     }
 
-//    public Optional<Project> getProject(Long id) {
-//        return projectRepository.findById(id);
-//    }
-
-//    public Optional<Project> getProject(Long id) {
-//        List l = projectRepositoryJDBC.findProjectByID(id);
-//        if(l.size() > 0) return Optional.of((Project) l.get(0));
-//        else return Optional.empty();
-//    }
-
-    public Optional<Project> getProject(Long id) {
-        return projectRepositoryNPJDBC.findProjectByID(id);
+    public Optional<ProjectDTO> getProject(Long id) {
+        Optional<Project> projectOptional = projectRepository.findById(id);
+        if (!projectOptional.isPresent()) return Optional.empty();
+        Project project = projectOptional.get();
+        return Optional.of(new ProjectDTO(
+                project.getName(),
+                project.getDescription(),
+                project.getStart_date(),
+                project.getFinish_date(),
+                project.getTasks().stream()
+                        .map(task -> new TaskDTO(
+                                task.getName(),
+                                task.getDescription(),
+                                task.getFinish_date(),
+                                task.isFinished()
+                        )).toList()));
     }
 
-    public List<Project> getProjectsBetweenDated(Date startDate, Date endDate) {
-        //return projectRepository.findAllBetweenDates(startDate, endDate);
-//        return projectRepositoryJDBC.findProjectsBetweenDates(startDate, endDate);
-        return projectRepositoryNPJDBC.findProjectsBetweenDates(startDate, endDate);
-
+    public List<ProjectDTO> getProjectsBetweenDated(Date startDate, Date endDate) {
+        List<Project> projects = projectRepository.findAllBetweenDates(startDate, endDate);
+        return projectToProjectDTO(projects);
     }
 
-    public List<Project> getAllProjects() {
-        //return projectRepository.findAll();
-        return projectRepositoryNPJDBC.findAllProjects();
+    public List<ProjectDTO> getAllProjects() {
+        List<Project> projects = projectRepository.findAll();
+        return projectToProjectDTO(projects);
+    }
+
+    public List<ProjectDTO> findProjectsByPhrase(String search) {
+        List<Project> projects = projectRepository.findByPhrase(search);
+        List<ProjectDTO> projectDTOS = projects.stream()
+                .map(project -> new ProjectDTO(
+                        project.getName(),
+                        project.getDescription(),
+                        project.getStart_date(),
+                        project.getFinish_date()
+                )).toList();
+        return projectDTOS;
+    }
+
+    public List<Map<String, Integer>> findUnfinishedTasksForProjects() {
+        return taskRepository.countUnfinishedTasksPerProject();
+    }
+
+    public List<ProjectDTO> findProjectsByPhraseAndDates(String search, Date startDate, Date endDate) {
+        return projectToProjectDTO(projectRepository.findAll(ProjectSpecification.searchByPhraseOrDates(search, startDate, endDate)));
+    }
+
+    public List<ProjectDTO> projectToProjectDTO(List<Project> projects) {
+        return projects.stream()
+                .map(project -> new ProjectDTO(
+                        project.getId(),
+                        project.getName(),
+                        project.getDescription(),
+                        project.getStart_date(),
+                        project.getFinish_date(),
+                        project.getTasks().stream()
+                                .map(task -> new TaskDTO(
+                                        task.getName(),
+                                        task.getDescription(),
+                                        task.getFinish_date(),
+                                        task.isFinished()
+                                )).toList()
+                )).toList();
     }
 }

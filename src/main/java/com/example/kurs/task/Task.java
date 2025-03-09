@@ -28,6 +28,13 @@ public class Task {
     public Task() {
     }
 
+    public Task(String name, String description, Date finish_date, boolean finished, Project project) {
+        this.name = name;
+        this.description = description;
+        this.finish_date = finish_date;
+        this.finished = finished;
+        this.project = project;
+    }
     public Task(long id, String name, String description, Date finish_date, boolean finished) {
         this.id = id;
         this.name = name;
