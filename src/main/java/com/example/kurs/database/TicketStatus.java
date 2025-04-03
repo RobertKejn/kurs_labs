@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 
 import java.util.List;
 
-@Entity
+//@Entity
 public class TicketStatus {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

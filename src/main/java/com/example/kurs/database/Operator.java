@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
+//@Entity
 public class Operator {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

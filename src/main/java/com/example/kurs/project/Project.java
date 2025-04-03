@@ -3,9 +3,7 @@ package com.example.kurs.project;
 import com.example.kurs.task.Task;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import jdk.jfr.Enabled;
 
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 

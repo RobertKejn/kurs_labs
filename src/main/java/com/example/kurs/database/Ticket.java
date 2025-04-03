@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
-@Entity
+//@Entity
 public class Ticket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
